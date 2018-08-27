@@ -502,9 +502,7 @@ Para probar este método, creemos una nueva entidad:
       
       if(temblor){
          // ¿Qué debes hacer si se detecta un temblor?
-      }
-     
-      delay(5000);
+      }     
     }
 
 
