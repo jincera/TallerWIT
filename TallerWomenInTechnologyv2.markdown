@@ -184,10 +184,8 @@ Podemos consultar una sola entidad agregando el identificador de esa entidad al 
 
 * (4) Haz una nueva consulta o modifica la que ya tienes.  Lo único que debes hacer es extender el URL con el ID de tu entidad 
 
-# Aquí necesito el JSON para hacer una consulta acotada específica a la zona
-
 ```javascript
-GET URL/v2/entities/{entityID}/
+GET URL/v2/entities/SensorSismico{entityID}/
 ```
 
 * (5) Agita tu sensor de movimiento para asegurar que llegó una notificación al OCB y lanza nuevamente la consulta.
