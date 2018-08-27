@@ -464,33 +464,78 @@ Para probar este método, creemos una nueva entidad:
  *  un Sistema de Alerta Sismica
  */
 
-#include <Time.h>
-    #include <TimeLib.h>
+#include <Bridge.h>
+    #include <Process.h>  
     #include <Wire.h>
     #include <LSM303.h>
     
+    // apcicipn
+    
     LSM303 compass;
-    char report[80];
-    int ejex, ejey, ejez, respuesta;
-    int mascara = 65520; // en binario 1111111111110000
-    HttpClient client;
+    int ejex, ejey, ejez;
+    int mascara = 65520; 
     String var, add, method, header,json;
     bool bandera;
-   
+    bool temblor = false;
+
+    
+    //Cambiar estos valores
+    String zona  = "";
+    String id = "";
+    String dirIP = ":1026";
     
     
     void setup()
     {
+      // Las funciones de configuración van aquí 
+
+      
+       delay(1000);
+    }
+    
+    void loop()
+    {
+      
+      // Llama aquí la función para encender el LED
+      
+      //Las funciones de acción van aquí 
+
+
+      delay(2000);
+      
+      if(temblor){
+         // ¿Qué debes hacer si se detecta un temblor?
+      }
+     
+      delay(5000);
+    }
+
+
+
+
+
+    //########################################################################################################
+    // Funciones a utilizar
+
+    //Fucnión que enciende LED
+    void encenderLED(){
+      digitalWrite(LED_BUILTIN, HIGH);   
+      delay(1000);                       
+      digitalWrite(LED_BUILTIN, LOW);    
+    }
+    
+    // Función que enciende el sensor para utilizarlo
+    void encenderSensor(){
       Serial.begin(9600);
       Bridge.begin();
       Wire.begin();
       compass.init();
       compass.enableDefault();
-      registrarSensor();
+      pinMode(LED_BUILTIN, OUTPUT);
     }
-    
-    void loop()
-    {
+
+    //Función que lee los datos del sensor y los imprime
+    void leerDatos(){
       compass.read();
       
       ejex = (compass.a.x & mascara)>>4;
@@ -505,49 +550,68 @@ Para probar este método, creemos una nueva entidad:
         ejez = -ejez;
       Serial.println(ejex);
       Serial.println(ejey);
-      
-      
-       
-      comprobacion();
-      delay(1000);
     }
+
     
-    
-   
-    void comprobacion(){
-       if(ejex >= 700){
+   // Función que comprueba si hay un temblor
+    void comprobarTemblor(){
+       if(ejex >= 500){
         Serial.println("temblor trepidatorio sobre x");
-        enviarDatosTemblor(ejex,"Ocilatorio");
+        enviarDatosTemblor(ejex);
+        temblor = true;
         bandera = false;
        }
           
-      if(ejey>= 700&& bandera){
+      if(ejey>= 500&& bandera){
         Serial.println("temblor trepidatorio sobre y");
-        enviarDatosTemblor(ejey,"Trepidatorio");
+        enviarDatosTemblor(ejey);
+        temblor = true;
         
       }
       bandera = true;
     }
-    
-    void enviarDatosTemblor(int magnitud, String tipo){
+
+
+    //Función que envía la magnitud de un temblor
+    void enviarDatosTemblor(int magnitud){
         Process p;
-        /*String dia, mes, year, hora, minutos;
-        dia = day();
-        mes = month();
-        year = year();
-        hora = hour();
-        minutos = minutes();*/
         p.begin("curl");
         p.addParameter("-H");
         p.addParameter("Content-Type: application/json");
         p.addParameter("-X");
         p.addParameter("PUT");
         p.addParameter("-d");
-        json = "{\"value\":\""+(String)magnitud+"\",\"metadata\":{\"tipo\": {\"value\":\""+tipo+"\"},\"fecha\":{\"value\":\"27-08-2018\"},\"hora\":{\"value\":\"10:30\"}}}";
+        json = "{\"value\":"+(String)magnitud+"}";
         Serial.println(json);
         p.addParameter(json);
         p.addParameter("-k");
-        p.addParameter("http://192.168.1.72:1026/v2/entities/SensorSismico2/attrs/temblor");
+        p.addParameter("http://"+dirIP+"/v2/entities/"+id+"/attrs/temblor");
+        p.run();
+        while (p.available() > 0) {
+          char c = p.read();
+          Serial.print(c);
+        }
+        Serial.println("Terminé enviar datos");
+        Serial.flush();
+        p.close();
+    }
+
+
+        //Función que regresa los valores del temblor a cero para poder recibir nuevos datos. 
+        void regresarValoresIniciales(){
+        Process p;
+        temblor = false;
+        p.begin("curl");
+        p.addParameter("-H");
+        p.addParameter("Content-Type: application/json");
+        p.addParameter("-X");
+        p.addParameter("PUT");
+        p.addParameter("-d");
+        json = "{\"value\":0}";
+        Serial.println(json);
+        p.addParameter(json);
+        p.addParameter("-k");
+        p.addParameter("http://"+dirIP+"/v2/entities/SensorSismico2/attrs/temblor");
         p.run();
         while (p.available() > 0) {
           char c = p.read();
@@ -556,7 +620,9 @@ Para probar este método, creemos una nueva entidad:
         Serial.flush();
         p.close();
     }
-    
+
+
+    //Función que registra al sensor en el servidor
     void registrarSensor(){
         Process p;
         Serial.println("Registro de sensor");
@@ -566,14 +632,15 @@ Para probar este método, creemos una nueva entidad:
         p.addParameter("-X");
         p.addParameter("POST");
         p.addParameter("-d");
-        p.addParameter("{\"id\": \"SensorSismico2\",\"type\":\"SensorSismico\",\"temblor\":{\"value\":\"0\",\"metadata\":{\"tipo\": {\"value\":\"-\"},\"fecha\":{\"value\":\"-\"},\"hora\":{\"value\":\"-\"}}}}");
+        p.addParameter("{\"id\": "+id+",\"type\":\"SensorSismico\",\"temblor\":{\"value\":0},\"zona\":{\"value\":"+zona+"}}");
         p.addParameter("-k");
-        p.addParameter("http://192.168.1.72:1026/v2/entities");
+        p.addParameter("http://"+dirIP+"/v2/entities");
         p.run();
         while (p.available() > 0) {
           char c = p.read();
           Serial.print(c);
         }
+        Serial.println("Terminé regsitro");
         Serial.flush();
         p.close();
         return;
