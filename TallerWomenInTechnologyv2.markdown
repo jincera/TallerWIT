@@ -608,8 +608,7 @@ Para probar este método, creemos una nueva entidad:
         Serial.println(json);
         p.addParameter(json);
         p.addParameter("-k");
-        p.addParameter("http://"+dirIP+"/v2/entities/SensorSismico2/attrs/temblor");
-        p.run();
+        p.addParameter("http://"+dirIP+"/v2/entities/"+id+"/attrs/temblor");        p.run();
         while (p.available() > 0) {
           char c = p.read();
           Serial.print(c);
